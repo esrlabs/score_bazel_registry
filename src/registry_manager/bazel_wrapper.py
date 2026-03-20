@@ -125,17 +125,49 @@ def try_parse_metadata_json(metadata_json: Path) -> BazelModuleInfo | None:
 
 
 def parse_MODULE_file_content(content: str) -> ModuleFileContent:  # noqa: N802
-    """Parse the content of a MODULE.bazel file.
+    """Parse the content of a MODULE.bazel file."""
 
-    Extracts version and compatibility_level using regex patterns.
-    """
+    # This searches for the 'FIRST' module it can find
+    module_match = re.search(r"module\s*\((.*?)\)", content, re.DOTALL)
+
+    if not module_match:
+        raise ValueError("No 'module' declaration found in MODULE.bazel")
+
+    module_content = module_match.group(1)
+
     comp_level = None
-    if m_cl := re.search(r"compatibility_level\s*=\s*(\d+)", content):
+    if m_cl := re.search(r"compatibility_level\s*=\s*(\d+)", module_content):
         comp_level = int(m_cl.group(1))
 
     version = None
-    if m_ver := re.search(r"version\s*=\s*['\"]([^'\"]+)['\"]", content):
+    if m_ver := re.search(r"version\s*=\s*['\"]([^'\"]+)['\"]", module_content):
         version = str(m_ver.group(1))
+
+    # If version or comp_level are missing we add a placeholder
+    # This will assist us in replacing / adding those later in patches
+    has_version = version is not None
+    has_comp_level = comp_level is not None
+
+    if not has_version or not has_comp_level:
+        module_start = module_match.start()
+        module_end = module_match.end()
+
+        to_insert = ""
+        # If it ends in command don't add another.
+        if module_content.strip() and not module_content.strip().endswith(","):
+            to_insert = ","
+        # unsure if the amount of spaces here is okay or should be dynamic?
+        if not has_version:
+            to_insert += '\n    version = ""'
+        if not has_comp_level:
+            if not has_version:
+                to_insert += ","
+            to_insert += "\n    compatibility_level = 0"
+        to_insert += "\n"
+
+        # replacing the entire module() block seemed easier than adding it
+        new_module = "module(" + module_content.rstrip() + to_insert + ")"
+        content = content[:module_start] + new_module + content[module_end:]
 
     return ModuleFileContent(
         content=content,
@@ -284,6 +316,9 @@ class ModuleUpdateRunner:
         if not self.info.mod_file:
             raise ValueError("Module file content not available")
 
+        # Ensure that version is not None (set it if none was found in module file)
+        if self.info.mod_file.version is None:
+            self.info.mod_file.version = Version("0.0.0")
         # Check if no patch is needed
         if (
             self.info.mod_file.version == self.info.release.version
@@ -301,7 +336,8 @@ class ModuleUpdateRunner:
 
         # Create patched content by replacing version
         stamped_content = re.sub(
-            r"(version\s*=\s*['\"])([^'\"]+)(['\"])",
+            # (version\s*=\s*['\"])([^'\"]*)(['\"])
+            r"(version\s*=\s*['\"])([^'\"]*)(['\"])",
             lambda m: f"{m.group(1)}{self.info.release.version}{m.group(3)}",
             self.info.mod_file.content,
             count=1,

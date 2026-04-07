@@ -38,8 +38,7 @@ def _parse_versions(raw_versions: object, metadata_path: Path) -> list[Version]:
 
     if not isinstance(raw_versions, list):
         log.fatal(
-            f"{metadata_path} has invalid versions field; expected list of semantic version strings",
-            file=metadata_path,
+            f"{metadata_path} has invalid versions field; expected list of semantic version strings"
         )
 
     versions: list[Version] = [Version(v) for v in raw_versions]  # pyright: ignore[reportUnknownVariableType]
@@ -84,7 +83,7 @@ def try_parse_metadata_json(metadata_json: Path) -> BazelModuleInfo | None:
         return None
 
     if not module_path.name.startswith("score_"):
-        log.warning(f"{module_path} is not prefixed with 'score_'", file=metadata_json)
+        log.warning(f"{module_path} is not prefixed with 'score_'")
 
     try:
         with open(metadata_json) as f:
@@ -99,17 +98,13 @@ def try_parse_metadata_json(metadata_json: Path) -> BazelModuleInfo | None:
         or len(data["repository"]) != 1
     ):
         log.warning(
-            f"{metadata_json} has invalid repository field; expected one element",
-            file=metadata_json,
+            f"{metadata_json} has invalid repository field; expected one element"
         )
         return None
 
     repo = data["repository"][0]
     if not isinstance(repo, str) or not repo.startswith("github:"):
-        log.warning(
-            f"{metadata_json} has non-GitHub repository '{repo}'; skipping",
-            file=metadata_json,
-        )
+        log.warning(f"{metadata_json} has non-GitHub repository '{repo}'; skipping")
         return None
 
     versions = _parse_versions(data.get("versions", []), metadata_json)
@@ -331,7 +326,7 @@ class ModuleUpdateRunner:
         # Build metadata strings for logging
         file_meta = f"(version={self.info.mod_file.version}, comp_level={self.info.mod_file.comp_level})"
         release_meta = f"(version={self.info.release.version}, comp_level={self.info.mod_file.major_version})"
-        log.info(
+        log.debug(
             f"MODULE.bazel {file_meta} doesn't match release {release_meta}; creating patch"
         )
 

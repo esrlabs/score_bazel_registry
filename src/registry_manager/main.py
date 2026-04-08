@@ -12,9 +12,11 @@
 # *******************************************************************************
 
 import argparse
+import json
 import os
 import subprocess
 import sys
+from dataclasses import dataclass
 
 from . import ModuleUpdateInfo
 from .bazel_wrapper import (
@@ -28,6 +30,110 @@ from .github_wrapper import GithubWrapper
 from .version import Version
 
 log = Logger(__name__)
+
+
+@dataclass(frozen=True)
+class RegistryRunResult:
+    updated_modules: list[ModuleUpdateInfo]
+    warnings: list[str]
+
+    @property
+    def has_updates(self) -> bool:
+        return bool(self.updated_modules)
+
+    @property
+    def commit_msg(self) -> str | None:
+        if not self.updated_modules:
+            return None
+
+        if len(self.updated_modules) == 1:
+            update = self.updated_modules[0]
+            return f"chore: update {update.module.name} to {update.release.version}"
+
+        title = "chore: update multiple modules"
+        lines = [
+            f"- {update.module.name} -> {update.release.version}"
+            for update in self.updated_modules
+        ]
+        return title + "\n\n" + "\n".join(lines)
+
+    @property
+    def pr_title(self) -> str:
+        if self.commit_msg:
+            return self.commit_msg.splitlines()[0]
+        return "Update modules"
+
+    def _generate_report(self) -> str:
+        lines = []
+        if not self.updated_modules:
+            lines.append("All modules are up to date; no updates needed.")
+        else:
+            lines.append(f"Updated {len(self.updated_modules)} module(s):")
+            lines.extend(
+                (
+                    f"- {u.module.name}: {u.module.latest_version} -> {u.release.version}"
+                    if u.module.versions
+                    else f"- {u.module.name}: add {u.release.version}"
+                )
+                for u in self.updated_modules
+            )
+
+        if self.warnings:
+            lines.append("")
+            lines.append(f"{len(self.warnings)} warning(s):")
+            for w in self.warnings:
+                lines.append(f"- {w}")
+
+        return "\n".join(lines)
+
+    @property
+    def pr_body(self) -> str:
+        return """This PR updates the modules to their latest versions.
+Please review and merge if everything looks good.
+
+""" + self._generate_report()
+
+    def _get_outputs(self) -> dict[str, object]:
+        outputs: dict[str, object] = {"has_updates": self.has_updates}
+        if self.has_updates:
+            outputs.update(
+                {
+                    "commit_msg": self.commit_msg,
+                    "pr_title": self.pr_title,
+                    "pr_body": self.pr_body,
+                }
+            )
+        return outputs
+
+    def render(self, mode: str | None) -> str:
+        if not mode:  # cli by default
+            return self._generate_report()
+
+        outputs = self._get_outputs()
+        if mode == "json":
+            return json.dumps(outputs, indent=2) + "\n"
+        else:  # github_output
+            return "".join(_format_github_output(k, v) for k, v in outputs.items())
+
+
+def _format_github_output(name: str, value: object) -> str:
+    """Format a GitHub Actions output variable according to the rules in
+    https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#about-yaml-syntax-for-github-actions
+    """
+
+    if isinstance(value, bool):
+        return f"{name}={'true' if value else 'false'}\n"
+
+    text = json.dumps(value, indent=2) if isinstance(value, list | dict) else str(value)
+
+    if "\n" not in text:
+        return f"{name}={text}\n"
+    else:
+        delimiter = "EOF"
+        # Make the delimiter unique
+        while delimiter in text:
+            delimiter += "_X"
+        return f"{name}<<{delimiter}\n{text}\n{delimiter}\n"
 
 
 def parse_args(args: list[str]) -> argparse.Namespace:
@@ -48,6 +154,16 @@ def parse_args(args: list[str]) -> argparse.Namespace:
         nargs="*",
         help="If not provided, all modules are processed according to their "
         "periodic-pull setting. Otherwise the provided modules are processed.",
+    )
+    parser.add_argument(
+        "--format",
+        choices=["json", "github_output"],
+        default=None,
+        help=(
+            "Output format. 'json' emits a single JSON object on stdout. "
+            "'github_output' emits GitHub Actions output syntax on stdout. "
+            "All diagnostics are written to stderr."
+        ),
     )
     return parser.parse_args(args)
 
@@ -212,6 +328,23 @@ def plan_module_updates(
     return updated_modules
 
 
+def apply_updates(plan: list[ModuleUpdateInfo]) -> None:
+    for task in plan:
+        if task.module.versions:
+            log.debug(
+                f"Updating {task.module.name} "
+                f"from {task.module.latest_version} to {task.release.version}"
+            )
+        else:
+            log.debug(
+                f"Adding first version to {task.module.name}: {task.release.version}"
+            )
+        ModuleUpdateRunner(task).generate_files()
+
+    if not plan:
+        log.debug("All modules are up to date; no updates needed.")
+
+
 def main(args: list[str]) -> None:
     """Main entry point for the registry manager.
 
@@ -222,28 +355,25 @@ def main(args: list[str]) -> None:
     p = parse_args(args)
     modules = read_modules(p.modules)
     gh = GithubWrapper(get_token(p))
+
+    # 1. Plan updates
     plan = plan_module_updates(p, gh, modules)
 
-    log.debug("---------------------------------------------------")
+    # 2. Perform updates
+    apply_updates(plan)
 
-    for task in plan:
-        if task.module.versions:
-            log.notice(
-                f"Updating {task.module.name} "
-                f"from {task.module.latest_version} to {task.release.version}"
-            )
-        else:
-            log.notice(
-                f"Adding first version to {task.module.name}: {task.release.version}"
-            )
-        ModuleUpdateRunner(task).generate_files()
+    # 3. Construct result
+    result = RegistryRunResult(
+        updated_modules=plan,
+        warnings=Logger.warning_messages(),
+    )
 
-    if not plan:
-        log.notice("All modules are up to date; no updates needed.")
+    # 4. Output result in requested format
+    print(result.render(p.format))
 
-    if log.warnings:
+    if result.warnings:
         # If any warnings were issued, exit with non-zero code
-        log.fatal(f"Completed with {len(log.warnings)} warnings.")
+        log.fatal(f"Completed with {len(result.warnings)} warnings.")
 
 
 def cli() -> None:

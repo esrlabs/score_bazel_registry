@@ -13,7 +13,6 @@
 
 import json
 from collections.abc import Callable
-from contextlib import suppress
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -22,57 +21,37 @@ from src.registry_manager.main import main
 from tests.conftest import make_release_info
 
 
-def test_all_correct(
+def test_cli_reports_no_updates_in_text_mode(
     build_fake_filesystem: Callable[..., None],
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """When all modules have compatibility_level matching major version, all is well."""
     build_fake_filesystem(
         {
             "modules": {
-                "score_correct_module": {
+                "score_demo": {
                     "metadata.json": json.dumps(
                         {
-                            "versions": ["1.0.0", "2.0.0"],
+                            "versions": ["1.0.0"],
                             "repository": ["github:org/repo"],
                         }
                     ),
-                    "1.0.0": {
-                        "MODULE.bazel": (
-                            "module(name='score_correct_module', "
-                            "version='1.0.0', compatibility_level=1)\n"
-                        )
-                    },
-                    "2.0.0": {
-                        "MODULE.bazel": (
-                            "module(name='score_correct_module', "
-                            "version='2.0.0', compatibility_level=2)\n"
-                        )
-                    },
                 }
             }
         }
     )
+
     with patch("src.registry_manager.main.GithubWrapper") as mock_gh_class:
         mock_gh = MagicMock()
         mock_gh_class.return_value = mock_gh
-        mock_gh.try_get_module_file_content.return_value = None
-        with suppress(SystemExit):
-            main(["--github-token", "FAKE_TOKEN"])
+        main(["--github-token", "FAKE_TOKEN"])
+
     captured = capsys.readouterr()
-    warning_messages = [
-        line for line in captured.err.splitlines() if "warning" in line.lower()
-    ]
-    if warning_messages:
-        print("Full log: ", captured.err)
-    assert warning_messages == []
-    assert (
-        captured.out
-        == "NOTICE: src.registry_manager.main All modules are up to date; no updates needed.\n"
-    )
+    assert captured.out == "All modules are up to date; no updates needed.\n"
+    assert "warning" not in captured.err.lower()
+    mock_gh.get_latest_release.assert_not_called()
 
 
-def test_stdout_only_contains_final_summary(
+def test_cli_applies_updates_and_prints_text_report(
     build_fake_filesystem: Callable[..., None],
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -106,13 +85,35 @@ def test_stdout_only_contains_final_summary(
         main(["--github-token", "FAKE_TOKEN"])
 
     captured = capsys.readouterr()
-    assert (
-        captured.out
-        == "NOTICE: src.registry_manager.main Updating score_demo from 1.0.0 to 2.0.0\n"
-    )
-    assert (
-        "NOTICE: src.registry_manager.main Updating score_demo from 1.0.0 to 2.0.0"
-        not in captured.err
-    )
+    assert captured.out == "Updated 1 module(s):\n- score_demo: 1.0.0 -> 2.0.0\n"
     assert "Checking module score_demo..." in captured.err
     mock_runner_class.return_value.generate_files.assert_called_once()
+
+
+def test_cli_json_mode_includes_warnings_and_exits_nonzero(
+    build_fake_filesystem: Callable[..., None],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    build_fake_filesystem(
+        {
+            "modules": {
+                "score_bad": {
+                    "metadata.json": json.dumps(
+                        {
+                            "versions": ["1.0.0"],
+                        }
+                    )
+                }
+            }
+        }
+    )
+
+    with pytest.raises(SystemExit, match="1"):
+        main(["--github-token", "FAKE_TOKEN", "--format", "json"])
+
+    captured = capsys.readouterr()
+    output = json.loads(captured.out)
+    assert output["has_updates"] is False
+    assert "commit_msg" not in output
+    assert "WARNING: src.registry_manager.bazel_wrapper" in captured.err
+    assert "ERROR: src.registry_manager.main Completed with 1 warnings." in captured.err

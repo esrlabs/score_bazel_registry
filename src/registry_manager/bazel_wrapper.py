@@ -16,6 +16,7 @@ import difflib
 import hashlib
 import json
 import re
+import urllib.parse
 import urllib.request
 from collections.abc import Iterable
 from pathlib import Path
@@ -182,9 +183,53 @@ def _sha256_from_bytes(stream: Iterable[bytes]) -> str:
     return "sha256-" + b64
 
 
-def sha256_from_url(url: str) -> str:
-    """Download file from URL and compute its SHA256 hash."""
-    with urllib.request.urlopen(url, timeout=10) as resp:
+# Hosts GitHub uses to serve repository archives. A token may only ever be sent
+# to these hosts (over HTTPS); anything else risks leaking the credential.
+_GITHUB_ARCHIVE_HOSTS = frozenset({"github.com", "codeload.github.com"})
+
+
+def _is_allowed_token_url(url: str) -> bool:
+    """True if url is HTTPS on an allowlisted GitHub archive host."""
+    parsed = urllib.parse.urlparse(url)
+    return parsed.scheme == "https" and parsed.hostname in _GITHUB_ARCHIVE_HOSTS
+
+
+class _TokenSafeRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Drop the Authorization header on any redirect that leaves the allowlist.
+
+    urllib forwards all request headers (including Authorization) to the redirect
+    target, so without this a redirect to a non-GitHub host would disclose the
+    token.
+    """
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # type: ignore[no-untyped-def]
+        new_req = super().redirect_request(req, fp, code, msg, headers, newurl)
+        if new_req is not None and not _is_allowed_token_url(newurl):
+            new_req.remove_header("Authorization")
+        return new_req
+
+
+def sha256_from_url(url: str, token: str | None = None) -> str:
+    """Download file from URL and compute its SHA256 hash.
+
+    A GitHub token is required for downloading archives of private repositories;
+    without it, GitHub responds with 404 (it hides private repos) rather than 401.
+
+    To avoid disclosing the token, token-authenticated downloads are restricted
+    to HTTPS GitHub archive hosts, and the Authorization header is stripped from
+    any redirect that leaves that allowlist.
+    """
+    req = urllib.request.Request(url)
+    if token:
+        if not _is_allowed_token_url(url):
+            raise ValueError(
+                "Refusing to send GitHub token: URL must use HTTPS and target "
+                f"an allowlisted GitHub archive host: {url!r}"
+            )
+        req.add_header("Authorization", f"Bearer {token}")
+
+    opener = urllib.request.build_opener(_TokenSafeRedirectHandler)
+    with opener.open(req, timeout=10) as resp:
 
         def chunk_iter():
             while chunk := resp.read(1024 * 1024):
@@ -205,8 +250,9 @@ class ModuleUpdateRunner:
     for a module version.
     """
 
-    def __init__(self, task_info: ModuleUpdateInfo):
+    def __init__(self, task_info: ModuleUpdateInfo, token: str | None = None):
         self.info = task_info
+        self.token = token
         self.patches: dict[str, str] = {}
         self.module_path = Path("modules") / task_info.module.name
         self.module_version_path = self.module_path / str(task_info.release.version)
@@ -228,7 +274,7 @@ class ModuleUpdateRunner:
     def _generate_source_json(self) -> None:
         """Generate source.json with integrity hash and patch metadata."""
         repo = self.info.module.org_and_repo.split("/")[-1]
-        integrity = sha256_from_url(self.info.release.tarball)
+        integrity = sha256_from_url(self.info.release.tarball, self.token)
         source_dict: dict[str, object] = {
             "integrity": integrity,
             "strip_prefix": f"{repo}-{self.info.release.version}",

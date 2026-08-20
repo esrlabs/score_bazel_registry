@@ -30,6 +30,8 @@
     "repository": [
         "github:eclipse-score/process_description"
     ],
-    "versions": [],
+    "versions": [
+        "2.1.0"
+    ],
     "yanked_versions": {}
 }

@@ -1,0 +1,10 @@
+{
+    "integrity": "sha256-QxbO5rBIGKILG+froCuR5uELfaeWwgk8JqoDRqXq+F4=",
+    "strip_prefix": "eclipse-score-process_description-36c6e5c",
+    "url": "https://api.github.com/repos/eclipse-score/process_description/tarball/v2.1.0",
+    "archive_type": "tar.gz",
+    "patch_strip": 1,
+    "patches": {
+        "module_dot_bazel_version.patch": "sha256-yQVh5azV8EH1pLJqmkiLp2xUK4MUnX3IOdiD1gEoXo8="
+    }
+}

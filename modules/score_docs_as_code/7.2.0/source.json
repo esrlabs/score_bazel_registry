@@ -1,0 +1,10 @@
+{
+    "integrity": "sha256-AJKU1nppAGHjleZn0NDq3r7O8aGpDcxy3nkzb/kErwU=",
+    "strip_prefix": "eclipse-score-docs-as-code-268dbeb",
+    "url": "https://api.github.com/repos/eclipse-score/docs-as-code/tarball/v7.2.0",
+    "archive_type": "tar.gz",
+    "patch_strip": 1,
+    "patches": {
+        "module_dot_bazel_version.patch": "sha256-2hpOZnzrO0LTAkorSuRxR61XFr9imI5MTuWkHZagoYc="
+    }
+}

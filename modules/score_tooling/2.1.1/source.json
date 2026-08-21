@@ -1,0 +1,10 @@
+{
+    "integrity": "sha256-cO/7sILAS4TK9jTJeazAIByLKRdREhaQXpoDCjvPGI0=",
+    "strip_prefix": "eclipse-score-tooling-9671eaa",
+    "url": "https://api.github.com/repos/eclipse-score/tooling/tarball/v2.1.1",
+    "archive_type": "tar.gz",
+    "patch_strip": 1,
+    "patches": {
+        "module_dot_bazel_version.patch": "sha256-IqAzCVJ8IdYgRjaFOn+TxTkb5T8WEv/3V8zDNz7VK8E="
+    }
+}

@@ -1,0 +1,10 @@
+{
+    "integrity": "sha256-XdacCUH0TFfHjoItSkXV/0PNPs9aVbmW5Vu/NTZL+hw=",
+    "strip_prefix": "score_cpp_policies-0.1.1",
+    "url": "https://github.com/eclipse-score/score_cpp_policies/archive/refs/tags/v0.1.1.tar.gz",
+    "archive_type": "tar.gz",
+    "patch_strip": 1,
+    "patches": {
+        "module_dot_bazel_version.patch": "sha256-OSa5dlYw51kKYZsYcBpUWC62sRC+Fj+5RSdRI7zbq1Q="
+    }
+}

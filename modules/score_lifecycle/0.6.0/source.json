@@ -1,0 +1,10 @@
+{
+    "integrity": "sha256-l1fpwImP0TzVLjMZS5OCTnjV1D+b9WFup96ZK0pzCRU=",
+    "strip_prefix": "lifecycle-0.6.0",
+    "url": "https://github.com/eclipse-score/lifecycle/archive/refs/tags/v0.6.0.tar.gz",
+    "archive_type": "tar.gz",
+    "patch_strip": 1,
+    "patches": {
+        "module_dot_bazel_version.patch": "sha256-YJcRoJJc+lqsP8KmF0P1mGMaVgJzU4NWfIzz8BlzW3c="
+    }
+}

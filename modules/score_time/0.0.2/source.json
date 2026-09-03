@@ -1,0 +1,10 @@
+{
+    "integrity": "sha256-gnBm154EtZ6vWjmym2hKW+DRodbTd4Ivr1BW3PD3Ta4=",
+    "strip_prefix": "time-0.0.2",
+    "url": "https://github.com/eclipse-score/time/archive/refs/tags/v0.0.2.tar.gz",
+    "archive_type": "tar.gz",
+    "patch_strip": 1,
+    "patches": {
+        "module_dot_bazel_version.patch": "sha256-+lY0CpaOz0a1KLYx9PI9VeEdc+ZYjkYq0OpYEdpeALc="
+    }
+}

@@ -1,0 +1,10 @@
+{
+    "integrity": "sha256-i0Z1DhUP7btM+GOWqEXZg0StUXN8u239Py+JDpCWqNQ=",
+    "strip_prefix": "docs-as-code-8.1.2",
+    "url": "https://github.com/eclipse-score/docs-as-code/archive/refs/tags/v8.1.2.tar.gz",
+    "archive_type": "tar.gz",
+    "patch_strip": 1,
+    "patches": {
+        "module_dot_bazel_version.patch": "sha256-+q1NZAeA2tDHzvYTPO+GilhdeFZEv8tXmeAMaddPjN4="
+    }
+}

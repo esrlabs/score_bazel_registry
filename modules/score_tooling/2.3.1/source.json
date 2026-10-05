@@ -1,0 +1,10 @@
+{
+    "integrity": "sha256-sidCVofdJnw5x0NXNPp6qBUN+QMQEMSQbwV2j36YFEQ=",
+    "strip_prefix": "tooling-2.3.1",
+    "url": "https://github.com/eclipse-score/tooling/archive/refs/tags/v2.3.1.tar.gz",
+    "archive_type": "tar.gz",
+    "patch_strip": 1,
+    "patches": {
+        "module_dot_bazel_version.patch": "sha256-L6+YFrluzSyh8D0z/N2yls60PWY6CS6SIqkUrBm+lOE="
+    }
+}

@@ -1,0 +1,10 @@
+{
+    "integrity": "sha256-3uWsqgB9KszJ6/OwTZKrngUK0gJjEpZTNPio/mFo1c0=",
+    "strip_prefix": "coverage_tool-0.4.0",
+    "url": "https://github.com/eclipse-score/coverage_tool/archive/refs/tags/v0.4.0.tar.gz",
+    "archive_type": "tar.gz",
+    "patch_strip": 1,
+    "patches": {
+        "module_dot_bazel_version.patch": "sha256-mqAQ891UtVnWeK7FPUt4THRnuAnDgVXPMwP1GhHXgtA="
+    }
+}

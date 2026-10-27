@@ -1,0 +1,10 @@
+{
+    "integrity": "sha256-+kEuJ465II1trXmRqPeH56Nd1YHpn86QRGSYnN4JvOQ=",
+    "strip_prefix": "tools-0.0.4",
+    "url": "https://github.com/eclipse-score/tools/archive/refs/tags/v0.0.4.tar.gz",
+    "archive_type": "tar.gz",
+    "patch_strip": 1,
+    "patches": {
+        "module_dot_bazel_version.patch": "sha256-J5qZYAiZMekjXjbJmAHPs81O/KF5K8zXC2zV8lMhvg0="
+    }
+}

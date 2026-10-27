@@ -1,0 +1,13 @@
+--- a/MODULE.bazel
++++ b/MODULE.bazel
+@@ -10,7 +10,9 @@
+ #
+ # SPDX-License-Identifier: Apache-2.0
+ # *******************************************************************************
+-module(name = "score_test_scenarios")
++module(name = "score_test_scenarios",
++    version = "0.5.0"
++)
+ 
+ # Bazel global rules
+ bazel_dep(name = "rules_python", version = "1.4.1")

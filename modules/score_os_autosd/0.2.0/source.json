@@ -1,0 +1,10 @@
+{
+    "integrity": "sha256-F8qNsUVerCmZkC901z5h+mG4jNKqZB9+t1wrqIJqVMw=",
+    "strip_prefix": "os_autosd-0.2.0",
+    "url": "https://github.com/eclipse-score/os_autosd/archive/refs/tags/v0.2.0.tar.gz",
+    "archive_type": "tar.gz",
+    "patch_strip": 1,
+    "patches": {
+        "module_dot_bazel_version.patch": "sha256-g2iR/TIyWWEDTQlLsp3wvyUQvUdz/4IyJXMhD6rq0fs="
+    }
+}

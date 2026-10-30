@@ -12,6 +12,8 @@
     "repository": [
         "github:eclipse-score/os_autosd"
     ],
-    "versions": [],
+    "versions": [
+        "0.2.0"
+    ],
     "yanked_versions": {}
 }
